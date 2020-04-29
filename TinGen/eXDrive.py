@@ -141,6 +141,9 @@ class AbstractDriveV3Service(AbstractService):
             query_list.append("mimeType != 'application/vnd.google-apps.folder'")
         return self.list_all(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
 
+    def download_file(self, file_id: str, hash_check: bool=True, chunk_size: int=1*1024*1024) -> Response:
+        # TODO
+        pass
 
 class AuthDriveV3Service(AbstractDriveV3Service):
     def __init__(self, credentials: Credentials):
@@ -154,6 +157,20 @@ class AuthDriveV3Service(AbstractDriveV3Service):
 
     def delete_file(self, file_id: str) -> Response:
         return self.session.request("DELETE", f"{self.SERVICE_URI}/files/{file_id}", params={"supportsAllDrives": True})
+
+    def anyone_with_link_share_file(self, file_id: str) -> Response:
+        # TODO
+        pass
+
+    def copy_file(self, file_id: str, parent_id: str=None, hash_check: bool=False) -> Response:
+        return self.session.request("POST", f"{self.SERVICE_URI}/files/{file_id}/copy", params={"enforceSingleParent": True, "supportsAllDrives": True}, data={"parents": [parent_id]})
+
+    def upload_file(self, file_path: Path, parent_id: str=None, hash_check: bool=True, chunk_size: int=1*1024*1024) -> Response:
+        # TODO
+        pass
+
+    def update_existing_file(self, file_id: str, file_path: str, hash_check: bool=True, chunk_size: int=1*1024*1024) -> Response:
+        pass
 
 
 class DriveV3Service(AbstractDriveV3Service):
