@@ -141,8 +141,12 @@ class AbstractDriveV3Service(AbstractService):
             query_list.append("mimeType != 'application/vnd.google-apps.folder'")
         return self.list_all(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
 
+    def get_file_meta(self, file_id: str) -> Response:
+        # TODO - Add function to get file metadata
+        pass
+
     def download_file(self, file_id: str, hash_check: bool=True, chunk_size: int=1*1024*1024) -> Response:
-        # TODO
+        # TODO - Add function to download file
         pass
 
 class AuthDriveV3Service(AbstractDriveV3Service):
@@ -159,17 +163,26 @@ class AuthDriveV3Service(AbstractDriveV3Service):
         return self.session.request("DELETE", f"{self.SERVICE_URI}/files/{file_id}", params={"supportsAllDrives": True})
 
     def anyone_with_link_share_file(self, file_id: str) -> Response:
-        # TODO
+        # TODO - Add function to share files
         pass
 
     def copy_file(self, file_id: str, parent_id: str=None, hash_check: bool=False) -> Response:
         return self.session.request("POST", f"{self.SERVICE_URI}/files/{file_id}/copy", params={"enforceSingleParent": True, "supportsAllDrives": True}, data={"parents": [parent_id]})
 
+    def copy_file_to_id(self, file_id: str) -> Response:
+        # TODO - Add function to copy a file to an existing file id
+        pass
+
     def upload_file(self, file_path: Path, parent_id: str=None, hash_check: bool=True, chunk_size: int=1*1024*1024) -> Response:
-        # TODO
+        # TODO - Add function to upload file
         pass
 
     def update_existing_file(self, file_id: str, file_path: str, hash_check: bool=True, chunk_size: int=1*1024*1024) -> Response:
+        # TODO - Add function to upload file to an existing file id
+        pass
+
+    def generate_ids(self) -> Response:
+        # TODO - Add function to generate file ids
         pass
 
 
