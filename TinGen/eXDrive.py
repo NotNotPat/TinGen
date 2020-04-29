@@ -94,7 +94,7 @@ class AbstractDriveV3Service(AbstractService):
         return self.list_all(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
 
 
-class AuthenticatedDriveV3Service(AbstractDriveV3Service):
+class AuthDriveV3Service(AbstractDriveV3Service):
     def __init__(self, credentials: Credentials):
         super().__init__(AuthHelpers.get_new_authenticated_session(credentials))
 
@@ -121,6 +121,6 @@ class AuthenticatedDriveV3Service(AbstractDriveV3Service):
         pass
 
 
-class UnauthenticatedDriveV3Service(AbstractDriveV3Service):
+class DriveV3Service(AbstractDriveV3Service):
     def __init__(self):
         super().__init__(Session())
