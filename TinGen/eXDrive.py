@@ -76,8 +76,6 @@ class AbstractDriveV3Service(AbstractService):
         if nextPageToken is not None:
             params.update({"pageToken": nextPageToken})
         params.update({"supportsAllDrives": True, "pageSize": 1000})
-        print(params)
-        print(self.SERVICE_URI)
         return self.session.request("GET", f"{self.SERVICE_URI}/files", params=params)
 
     def list_folders(self, folder_id:str, include_trashed:bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
