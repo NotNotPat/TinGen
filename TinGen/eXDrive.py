@@ -118,7 +118,7 @@ class AbstractDriveV3Service(AbstractService):
     def __init__(self, session:Session):
         super().__init__(session, service_slug="drive", service_ver_num="v3")
 
-    def list_all(self, folder_id:str, include_trashed:bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
+    def list_all(self, folder_id: str, include_trashed: bool=False, nextPageToken: str=None, query_list: Sequence[str]=[], fields: Sequence[str]=[]) -> Response:
         params = {}
         if f"'{folder_id}' in parents" not in query_list:
             query_list.append(f"'{folder_id}' in parents")
@@ -131,12 +131,12 @@ class AbstractDriveV3Service(AbstractService):
         params.update({"supportsAllDrives": True, "pageSize": 1000})
         return self.session.request("GET", f"{self.SERVICE_URI}/files", params=params)
 
-    def list_folders(self, folder_id:str, include_trashed:bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
+    def list_folders(self, folder_id: str, include_trashed: bool=False, nextPageToken: str=None, query_list: Sequence[str]=[], fields: Sequence[str]=[]) -> Response:
         if "mimeType = 'application/vnd.google-apps.folder'" not in query_list:
             query_list.append("mimeType = 'application/vnd.google-apps.folder'")
         return self.list_all(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
 
-    def list_files(self, folder_id: str, include_trashed: bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
+    def list_files(self, folder_id: str, include_trashed: bool=False, nextPageToken: str=None, query_list: Sequence[str]=[], fields: Sequence[str]=[]) -> Response:
         if "mimeType != 'application/vnd.google-apps.folder'" not in query_list:
             query_list.append("mimeType != 'application/vnd.google-apps.folder'")
         return self.list_all(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
