@@ -65,7 +65,6 @@ class AbstractDriveV3Service(AbstractService):
     def __init__(self, session:Session):
         super().__init__(session, service_slug="drive", service_ver_num="v3")
 
-    @abstractmethod
     def list_all(self, folder_id:str, include_trashed:bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
         params = {}
         if f"'{folder_id}' in parents" not in query_list:
@@ -81,31 +80,20 @@ class AbstractDriveV3Service(AbstractService):
         print(self.SERVICE_URI)
         return self.session.request("GET", f"{self.SERVICE_URI}/files", params=params)
 
-    @abstractmethod
     def list_folders(self, folder_id:str, include_trashed:bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
         if "mimeType = 'application/vnd.google-apps.folder'" not in query_list:
             query_list.append("mimeType = 'application/vnd.google-apps.folder'")
         return self.list_all(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
 
-    @abstractmethod
     def list_files(self, folder_id: str, include_trashed: bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
         if "mimeType != 'application/vnd.google-apps.folder'" not in query_list:
-            query_list.append("mimeType = 'application/vnd.google-apps.folder'")
+            query_list.append("mimeType != 'application/vnd.google-apps.folder'")
         return self.list_all(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
 
 
 class AuthDriveV3Service(AbstractDriveV3Service):
     def __init__(self, credentials: Credentials):
         super().__init__(AuthHelpers.get_new_authenticated_session(credentials))
-
-    def list_all(self, folder_id:str, include_trashed:bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
-        return super().list_all(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
-
-    def list_folders(self, folder_id: str, include_trashed: bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
-        return super().list_folders(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
-
-    def list_files(self, folder_id: str, include_trashed: bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
-        return super().list_files(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
 
     def empty_trash(self) -> Response:
         return self.session.request("DELETE", f"{self.SERVICE_URI}/files/trash") 
