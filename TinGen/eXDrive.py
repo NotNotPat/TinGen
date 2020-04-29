@@ -67,7 +67,6 @@ class AbstractDriveV3Service(AbstractService):
 
     @abstractmethod
     def list_all(self, folder_id:str, include_trashed:bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
-        print("test3")
         params = {}
         if f"'{folder_id}' in parents" not in query_list:
             query_list.append(f"'{folder_id}' in parents")
@@ -90,7 +89,6 @@ class AbstractDriveV3Service(AbstractService):
 
     @abstractmethod
     def list_files(self, folder_id: str, include_trashed: bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
-        print("test2")
         if "mimeType != 'application/vnd.google-apps.folder'" not in query_list:
             query_list.append("mimeType = 'application/vnd.google-apps.folder'")
         return self.list_all(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
@@ -107,14 +105,13 @@ class AuthenticatedDriveV3Service(AbstractDriveV3Service):
         return super().list_folders(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
 
     def list_files(self, folder_id: str, include_trashed: bool=False, nextPageToken=None, query_list:Sequence[str]=[], fields:Sequence[str]=[]) -> Response:
-        print("test1")
         return super().list_files(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
 
     def empty_trash(self) -> Response:
         return self.session.request("DELETE", f"{self.SERVICE_URI}/files/trash") 
 
     def trash_file(self, file_id: str) -> Response:
-        self.session.request("PATCH", f"{self.SERVICE_URI}/files/{file_id}", data={"trashed": True}, params={"supportsAllDrives": True})
+        return self.session.request("PATCH", f"{self.SERVICE_URI}/files/{file_id}", data={"trashed": True}, params={"supportsAllDrives": True})
 
     def delete_file(self, file_id: str) -> Response:
         return self.session.request("DELETE", f"{self.SERVICE_URI}/files/{file_id}", params={"supportsAllDrives": True})
