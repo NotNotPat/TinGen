@@ -13,6 +13,7 @@ from typing import Sequence
 from json import load as json_deserialize
 from json import dump as json_serialize
 from json import JSONDecodeError
+from uuid import uuid4 as uuid_generator
 
 
 class AuthHelpers(object, metaclass=ABCMeta):
@@ -80,17 +81,29 @@ class AuthHelpers(object, metaclass=ABCMeta):
                 pass
 
         if credentials is None:
-            credentials = AuthHelpers.generate_user_credentials_from_client_secrets_file(client_secret["installed"]["client_id"], client_secret["installed"]["client_secret"], scopes_needed, **options)
+            credentials = AuthHelpers.generate_user_credentials_from_client_secrets_file(
+                client_secret["installed"]["client_id"],
+                client_secret["installed"]["client_secret"],
+                scopes_needed,
+                **options
+            )
 
-        print(f"DEBUG: scopes = {credentials.scopes}")
         if not credentials.valid:
             if not credentials.expired:
                 credentials.refresh(Request())
             else:
-                credentials = AuthHelpers.generate_user_credentials_from_client_secrets_file(client_secret_path, credentials.scopes, **options)
+                credentials = AuthHelpers.generate_user_credentials_from_client_secrets_file(
+                    client_secret_path,
+                    credentials.scopes,
+                    **options
+                )
 
         if not credentials.has_scopes(scopes_needed):
-            credentials = AuthHelpers.generate_user_credentials_from_client_secrets_file(client_secret_path, scopes_needed.extend(credentials.scopes), **options)
+            credentials = AuthHelpers.generate_user_credentials_from_client_secrets_file(
+                client_secret_path,
+                scopes_needed.extend(credentials.scopes),
+                **options
+            )
 
         if token_path is not None:
             with open(token_path, "w") as token_stream:
@@ -118,7 +131,7 @@ class AbstractDriveV3Service(AbstractService):
     def __init__(self, session:Session):
         super().__init__(session, service_slug="drive", service_ver_num="v3")
 
-    def list_all(self, folder_id: str, include_trashed: bool=False, nextPageToken: str=None, query_list: Sequence[str]=[], fields: Sequence[str]=[]) -> Response:
+    def list_all(self, folder_id: str, include_trashed: bool=False, page_token: str=None, query_list: Sequence[str]=[], fields: str="*") -> Response:
         params = {}
         if f"'{folder_id}' in parents" not in query_list:
             query_list.append(f"'{folder_id}' in parents")
@@ -126,27 +139,30 @@ class AbstractDriveV3Service(AbstractService):
             query_list.append("trashed = false")
         if len(query_list) > 0:
             params.update({"q": " and ".join(query_list)})
-        if nextPageToken is not None:
-            params.update({"pageToken": nextPageToken})
-        params.update({"supportsAllDrives": True, "pageSize": 1000})
+        if page_token is not None:
+            params.update({"pageToken": page_token})
+        params.update({"supportsAllDrives": True, "pageSize": 1000, "fields": fields})
         return self.session.request("GET", f"{self.SERVICE_URI}/files", params=params)
 
-    def list_folders(self, folder_id: str, include_trashed: bool=False, nextPageToken: str=None, query_list: Sequence[str]=[], fields: Sequence[str]=[]) -> Response:
+    def list_folders(self, folder_id: str, include_trashed: bool=False, page_token: str=None, query_list: Sequence[str]=[], fields: str="*") -> Response:
         if "mimeType = 'application/vnd.google-apps.folder'" not in query_list:
             query_list.append("mimeType = 'application/vnd.google-apps.folder'")
-        return self.list_all(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
+        return self.list_all(folder_id, include_trashed=include_trashed, page_token=page_token, query_list=query_list, fields=fields)
 
-    def list_files(self, folder_id: str, include_trashed: bool=False, nextPageToken: str=None, query_list: Sequence[str]=[], fields: Sequence[str]=[]) -> Response:
+    def list_files(self, folder_id: str, include_trashed: bool=False, page_token: str=None, query_list: Sequence[str]=[], fields: str="*") -> Response:
         if "mimeType != 'application/vnd.google-apps.folder'" not in query_list:
             query_list.append("mimeType != 'application/vnd.google-apps.folder'")
-        return self.list_all(folder_id, include_trashed=include_trashed, nextPageToken=nextPageToken, query_list=query_list, fields=fields)
+        return self.list_all(folder_id, include_trashed=include_trashed, page_token=page_token, query_list=query_list, fields=fields)
 
-    def get_file_meta(self, file_id: str) -> Response:
-        # TODO - Add function to get file metadata
-        pass
+    def get_file_meta(self, file_id: str, fields: str="*") -> Response:
+        return self.session.request("GET", f"{self.SERVICE_URI}/files/{file_id}", params={"alt": "json", "fields": fields, "supportsAllDrives": True})
 
     def download_file(self, file_id: str, hash_check: bool=True, chunk_size: int=1*1024*1024) -> Response:
-        # TODO - Add function to download file
+        # TODO - Implementation
+        pass
+
+    def partial_download_file(self, file_id: str, total_size: int, range_start: int, chunk_size: int=1*1024*1024):
+        # TODO - Implementation
         pass
 
 class AuthDriveV3Service(AbstractDriveV3Service):
@@ -162,28 +178,84 @@ class AuthDriveV3Service(AbstractDriveV3Service):
     def delete_file(self, file_id: str) -> Response:
         return self.session.request("DELETE", f"{self.SERVICE_URI}/files/{file_id}", params={"supportsAllDrives": True})
 
-    def anyone_with_link_share_file(self, file_id: str) -> Response:
-        # TODO - Add function to share files
-        pass
+    def copy_file(self, file_id: str, parent_id: str=None, hash_check: bool=False, fields: str="*") -> Response:
+        # TODO - Hash Checking
+        data = {}
+        if parent_id is not None:
+            data.update({"parents": [parent_id]})
+        return self.session.request("POST", f"{self.SERVICE_URI}/files/{file_id}/copy", params={"enforceSingleParent": True, "supportsAllDrives": True}, data=data)
 
-    def copy_file(self, file_id: str, parent_id: str=None, hash_check: bool=False) -> Response:
-        return self.session.request("POST", f"{self.SERVICE_URI}/files/{file_id}/copy", params={"enforceSingleParent": True, "supportsAllDrives": True}, data={"parents": [parent_id]})
+    def copy_file_to_id(self, file_id: str, dest_file_id: str, hash_check: bool=False, fields: str="*") -> Response:
+        # TODO - Hash Checking
+        return self.session.request("POST", f"{self.SERVICE_URI}/files/{file_id}/copy", params={"enforceSingleParent": True, "supportsAllDrives": True}, data={"id": dest_file_id})
 
-    def copy_file_to_id(self, file_id: str) -> Response:
-        # TODO - Add function to copy a file to an existing file id
-        pass
+    def generate_ids(self, ids_to_generate: int, fields: str="*") -> Response:
+        return self.session.request("GET", f"{self.SERVICE_URI}/files/generateIds", params={"count": ids_to_generate, fields: fields})
 
     def upload_file(self, file_path: Path, parent_id: str=None, hash_check: bool=True, chunk_size: int=1*1024*1024) -> Response:
-        # TODO - Add function to upload file
+        # TODO - Implementation
+        pass
+
+    def partial_upload_file(self, file_path: Path, parent_id: str=None, hash_check: bool=True, chunk_size: int=1*1024*1024) -> Response:
+        # TODO - Implementation
         pass
 
     def update_existing_file(self, file_id: str, file_path: str, hash_check: bool=True, chunk_size: int=1*1024*1024) -> Response:
-        # TODO - Add function to upload file to an existing file id
+        # TODO - Implementation
         pass
 
-    def generate_ids(self) -> Response:
-        # TODO - Add function to generate file ids
-        pass
+    def create_permission(self, file_id: str, perm_role: str, perm_type: str, fields: str="*", allow_file_discovery: bool=False, email_address: str=None, domain: str=None) -> Response:
+        if perm_type in ("user", "group") and email_address is None:
+            # TODO - Exception Stuff
+            raise Exception(f"")
+ 
+        elif perm_type == "domain" and domain is None:
+            # TODO - Exception Stuff
+            raise Exception(f"")
+ 
+        else:
+            return self.session.request("POST", f"{self.SERVICE_URI}/files/{file_id}/permissions", params={"fields": fields, "enforceSingleParent": True, "supportsAllDrives": True}, data={"role": None, "type": None})
+
+    def delete_permission(self, file_id: str, permission_id: str) -> Response:
+        return self.session.request("DELETE", f"{self.SERVICE_URI}/files/{file_id}/permissions/{permission_id}", params={"supportsAllDrives": True})
+
+    def get_permission(self, file_id: str, permission_id: str, fields: str="*") -> Response:
+        return self.session.request("GET", f"{self.SERVICE_URI}/files/{file_id}/permissions/{permission_id}", params={"supportsAllDrives": True})
+
+    def list_file_permissions(self, file_id: str, page_token: str=None, fields: str="*") -> Response:
+        params = {"fields": fields, "supportsAllDrives": True}
+        if page_token is not None:
+            params.update({"pageToken": page_token})
+        return self.session.request("GET", f"{self.SERVICE_URI}/files/{file_id}/permissions", params=params)
+
+    def anyone_with_link_share_file(self, file_id: str, fields="*", allow_file_discovery=False) -> Response:
+        return self.create_permission(file_id, "reader", "anyone", fields=fields, allow_file_discovery=allow_file_discovery)
+
+    def create_shared_drive(self) -> Response:
+        return self.session.request("POST", f"{self.SERVICE_URI}/drives", params={"requestId": uuid_generator()})
+
+    def delete_shared_drive(self, drive_id: str) -> Response:
+        return self.session.request("DELETE", f"{self.SERVICE_URI}/drives/{drive_id}")
+
+    def get_shared_drive(self, drive_id: str) -> Response:
+        return self.session.request("GET", f"{self.SERVICE_URI}/drives/{drive_id}")
+
+    def hide_shared_drive(self, drive_id: str) -> Response:
+        return self.session.request("POST", f"{self.SERVICE_URI}/drives/{drive_id}/hide")
+
+    def unhide_shared_drive(self, drive_id: str) -> Response:
+        return self.session.request("POST", f"{self.SERVICE_URI}/drives/{drive_id}/unhide")
+
+    def list_shared_drives(self, page_token: str=None, query_list: Sequence[str]=[]) -> Response:
+        params = {"pageSize": 100}
+        if len(query_list) > 0:
+            params.update({"q": " and ".join(query_list)})
+        if page_token is not None:
+            params.update({"pageToken": page_token})
+        return self.session.request("GET", f"{self.SERVICE_URI}/drives", params=params)
+
+    def change_shared_drive_name(self, drive_id: str, new_name: str) -> Response:
+        return self.session.request("PATCH", f"{self.SERVICE_URI}/drives/{drive_id}", data={"name": new_name})
 
 
 class DriveV3Service(AbstractDriveV3Service):
