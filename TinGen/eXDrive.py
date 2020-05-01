@@ -14,6 +14,7 @@ from json import load as json_deserialize
 from json import dump as json_serialize
 from json import JSONDecodeError
 from uuid import uuid4 as uuid_generator
+from hashlib import md5
 
 
 class AuthHelpers(object, metaclass=ABCMeta):
@@ -168,6 +169,33 @@ class AbstractDriveV3Service(AbstractService):
 class AuthDriveV3Service(AbstractDriveV3Service):
     def __init__(self, credentials: Credentials):
         super().__init__(AuthHelpers.get_new_authenticated_session(credentials))
+
+    def create_new_file_permission(self, file_id: str, perm_role: str, perm_type: str, allow_file_discovery: bool=False, email_address_to_add: str=None, fields: Sequence[str]=[]) -> Response:
+        if perm_role in ("owner", "organizer", "fileOrganizer", "writer", "commenter", "reader") and perm_type in ("user", "group", "domain", "anyone"):
+            data = {"role": perm_role, "type": perm_type}
+            if perm_type in ("user", "group"):
+                if email_address_to_add is None:
+                    raise Exception("No email address specificed for user/group to add.")
+                data.update({"emailAddress": email_address_to_add})
+            elif perm_type == "anyone" and allow_file_discovery:
+                data.update({"allowFileDiscovery": True})
+            return self.session.request("POST", f"{self.SERVICE_URI}/files/{file_id}/permissions", params={"supportAllDrives": True}, data=data)
+
+    def get_file_permission(self, file_id: str, permission_id: str, fields: Sequence[str]=[]) -> Response:
+        return self.session.request("GET", f"{self.SERVICE_URI}/files/{file_id}/permissions/{permission_id}", params={"supportsAllDrives": True})
+
+    def delete_file_permission(self, file_id: str, permission_id: str) -> Response:
+        return self.session.request("DELETE", f"{self.SERVICE_URI}/files/{file_id}/permissions/{permission_id}", params={"supportsAllDrives": True})
+
+    def list_file_permissions(self, file_id: str, next_page_token: str=None, fields: Sequence[str]=[]) -> Response:
+        params = {"pageSize": 100, "supportsAllDrives": True}
+        if next_page_token is not None:
+            params.update({"pageToken": next_page_token})
+        return self.session.request("GET", f"{self.SERVICE_URI}/files/{file_id}/permissions", params=params)
+
+    def anyone_with_link_share_file(self, file_id: str, allow_file_discovery: bool=False) -> Response:
+        # TODO - Add function to share files
+        pass
 
     def empty_trash(self) -> Response:
         return self.session.request("DELETE", f"{self.SERVICE_URI}/files/trash") 
