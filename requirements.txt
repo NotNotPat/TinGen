@@ -1,6 +1,6 @@
 tqdm
 pycryptodome
-google-api-python-client
-google-auth-httplib2
+google-auth
 google-auth-oauthlib
 zstandard
+requests
