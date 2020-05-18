@@ -99,7 +99,14 @@ class GDrive:
                 raise Exception("Unretryable Error")
         return response
 
-    def _ls(self, folder_id, fields="files(id,name,size,permissionIds),nextPageToken", searchTerms=""):
+    def get_file_meta(self, file_id, fields="id,name,size,permissionIds"):
+        return self._apicall(self.drive_service.files().get(
+            file_id,
+            fields=fields,
+            supportsAllDrives=True
+        ))
+
+    def _ls(self, folder_id, fields="files(id,name,size,permissionIds,shortcutDetails(targetId)),nextPageToken", searchTerms=""):
         files = []
         resp = {"nextPageToken": None}
         while "nextPageToken" in resp:
@@ -117,27 +124,27 @@ class GDrive:
     def _lsd(self, folder_id):
         return self._ls(
             folder_id,
-            searchTerms="mimeType contains \"application/vnd.google-apps.folder\""
+            searchTerms="mimeType = \"application/vnd.google-apps.folder\" or shortcutDetails.targetMimeType = \"application/vnd.google-apps.folder\""
         )
 
-    def _lsf(self, folder_id, fields="files(id,name,size,permissionIds),nextPageToken"):
+    def _lsf(self, folder_id, fields="files(id,name,size,permissionIds,shortcutDetails(targetId)),nextPageToken"):
         return self._ls(
             folder_id,
             fields=fields,
-            searchTerms="not mimeType contains \"application/vnd.google-apps.folder\""
+            searchTerms="mimeType != \"application/vnd.google-apps.folder\" or shortcutDetails.targetMimeType != \"application/vnd.google-apps.folder\""
         )
 
     def _lsd_my_drive(self):
         return self._ls(
             "root",
-            searchTerms="mimeType contains \"application/vnd.google-apps.folder\""
+            searchTerms="mimeType = \"application/vnd.google-apps.folder\" or shortcutDetails.targetMimeType = \"application/vnd.google-apps.folder\""
         )
 
-    def _lsf_my_drive(self, fields="files(id,name,size,permissionIds),nextPageToken"):
+    def _lsf_my_drive(self, fields="files(id,name,size,permissionIds,shortcutDetails(targetId)),nextPageToken"):
         return self._ls(
             "root",
             fields=fields,
-            searchTerms="not mimeType contains \"application/vnd.google-apps.folder\""
+            searchTerms="mimeType != \"application/vnd.google-apps.folder\" or shortcutDetails.targetMimeType != \"application/vnd.google-apps.folder\""
         )
 
     def check_file_shared(self, file_to_check):
@@ -153,17 +160,26 @@ class GDrive:
     def delete_file_permission(self, file_id, permission_id):
         self._apicall(self.drive_service.permissions().delete(fileId=file_id, permissionId=permission_id, supportsAllDrives=True))
 
-    def get_all_files_in_folder(self, folder_id: str, recursion: bool, progress_bar: tqdm) -> dict:
+    def get_all_files_in_folder(self, folder_id: str, recursion: bool, progress_bar: tqdm, ignore_gdrive_shortcuts: bool) -> dict:
         files = {}
 
         for _file in self._lsf(folder_id):
+            follow_shortcut = not ignore_gdrive_shortcuts and True
             if "size" in _file:
-                files.update({_file["id"]: {"size": _file["size"], "name": _file["name"], "shared": self.check_file_shared(_file)}})
-                progress_bar.update(1)
+                if "shortcutDetails" not in _file:
+                    files.update({_file["id"]: {"size": _file["size"], "name": _file["name"], "shared": self.check_file_shared(_file)}})
+                    progress_bar.update(1)
+                elif "shortcutDetails" in _file and not ignore_gdrive_shortcuts:
+                    file_meta = self.get_file_meta(_file["shortcutDetails"]["targetId"])
+                    files.update({file_meta["id"]: {"size": file_meta["size"], "name": file_meta["name"], "shared": self.check_file_shared(file_meta)}})
+                    progress_bar.update(1)
                 
         if recursion:
             for _folder in self._lsd(folder_id):
-                files.update(self.get_all_files_in_folder(_folder["id"], recursion, progress_bar))
+                if "shortcutDetails" not in _folder:
+                    files.update(self.get_all_files_in_folder(_folder["id"], recursion, progress_bar, ignore_gdrive_shortcuts))
+                elif "shortcutDetails" in _file and not ignore_gdrive_shortcuts:
+                    files.update(self.get_all_files_in_folder(_folder["shortcutDetails"]["targetId"], recursion, progress_bar, ignore_gdrive_shortcuts))
 
         return files
 

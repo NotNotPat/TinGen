@@ -19,6 +19,7 @@ if __name__ == "__main__":
     parser.add_argument("--add-nsw-files-without-title-id", action="store_true", help="Adds files without title ID")
     parser.add_argument("--add-non-nsw-files", action="store_true", help="Adds files without valid NSW ROM extension(NSP/NSZ/XCI/XCZ) to index")
     parser.add_argument("--success", metavar="SUCCESS_MESSAGE", help="Adds a success message to index file to show if index is successfully read by tinfoil")
+    parser.add_argument("--ignore-gdrive-shortcuts", action="store_true", help="Skip including any Google Drive shortcuts")
 
     parser.add_argument("--encrypt", action="store_true", help="Encrypts the resulting index file")
     parser.add_argument("--public-key", metavar="PUBLIC_KEY_FILE_PATH", default="public.pem", help="File Path for Public Key to encrypt with")
@@ -38,7 +39,7 @@ if __name__ == "__main__":
     generator = TinGen(args.token, args.credentials, args.headless)
 
     print(f"Generating index")
-    generator.index_generator(args.folder_ids, args.recursion, args.add_nsw_files_without_title_id, args.add_non_nsw_files)
+    generator.index_generator(args.folder_ids, args.recursion, args.add_nsw_files_without_title_id, args.add_non_nsw_files, args.ignore_gdrive_shortcuts)
 
     if args.success:
         print(f"Adding success message to index")
