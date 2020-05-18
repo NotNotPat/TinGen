@@ -131,7 +131,7 @@ class GDrive:
         return self._ls(
             folder_id,
             fields=fields,
-            searchTerms="mimeType != \"application/vnd.google-apps.folder\" or shortcutDetails.targetMimeType != \"application/vnd.google-apps.folder\""
+            searchTerms="mimeType != \"application/vnd.google-apps.folder\" and shortcutDetails.targetMimeType != \"application/vnd.google-apps.folder\""
         )
 
     def _lsd_my_drive(self):
@@ -144,7 +144,7 @@ class GDrive:
         return self._ls(
             "root",
             fields=fields,
-            searchTerms="mimeType != \"application/vnd.google-apps.folder\" or shortcutDetails.targetMimeType != \"application/vnd.google-apps.folder\""
+            searchTerms="mimeType != \"application/vnd.google-apps.folder\" and shortcutDetails.targetMimeType != \"application/vnd.google-apps.folder\""
         )
 
     def check_file_shared(self, file_to_check):
